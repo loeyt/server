@@ -3,4 +3,4 @@ language: go
 go_import_path: loe.yt/server
 
 go:
-  - 1.7
+  - 1.7.3
