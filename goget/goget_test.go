@@ -19,7 +19,7 @@ var serverImport = &goget.Import{
 	Redirect: "https://loe.yt/some/redirect/target",
 }
 
-func TestGoGet(t *testing.T) {
+func TestStatic(t *testing.T) {
 	s := httptest.NewServer(&server.Handler{
 		Services: []server.Service{
 			goget.NewService(goget.Static{
@@ -52,9 +52,12 @@ func getGoImport(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
 	b := &bytes.Buffer{}
 	_, err = io.Copy(b, resp.Body)
+	if err != nil {
+		return "", err
+	}
+	err = resp.Body.Close()
 	if err != nil {
 		return "", err
 	}

@@ -11,21 +11,35 @@ import (
 	"loe.yt/server"
 )
 
-// Import
+// Import holds the data needed for go-gettable endpoints. Prefix, Vcs and
+// Repo are the fields needed to serve a go-import meta-tag. Vcs and Repo are
+// what you would expect them to be. Prefix has one gotcha: it's without the
+// host part of the import prefix. So for "loe.yt/server/cmd/loeyt-server"
+// this should be "server/cmd/loeyt-server". The host part is added from the
+// Host header of the HTTP request.
+//
+// Requests lacking the "go-get=1" query will be redirected to Redirect. If
+// Redirect is empty then the redirect is targeted at godoc.org.
 type Import struct {
-	Prefix   string // the import prefix, without the host part
-	Vcs      string // the version control system
-	Repo     string // the repository root
-	Redirect string // redirect target for non-go-get requests ("" = Repo)
+	Prefix   string
+	Vcs      string
+	Repo     string
+	Redirect string
 }
 
+// ImportSource describes the interface this service expects to fetch the data
+// needed to serve go-import metadata and redirects.
 type ImportSource interface {
 	GetImport(u *url.URL) (*Import, error)
 }
 
-// Static is an ImportSource with a static mapping of path to Import.
+// Static is an ImportSource with a static mapping of path to Import. The path
+// should be trimmed of any leading and trailing slashes, and is without the
+// host part of the import path.
 type Static map[string]*Import
 
+// GetImport takes u.Path and returns the Import with that key (nil if not
+// present).
 func (s Static) GetImport(u *url.URL) (*Import, error) {
 	prefix := strings.Trim(u.Path, "/")
 	return s[prefix], nil
@@ -35,6 +49,8 @@ type service struct {
 	ImportSource
 }
 
+// NewService creates a new server.Service using the supplied ImportSource to
+// find valid go-get imports.
 func NewService(s ImportSource) server.Service {
 	return &service{ImportSource: s}
 }
