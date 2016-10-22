@@ -3,6 +3,7 @@
 package goget
 
 import (
+	"html/template"
 	"net/http"
 	"net/url"
 	"strings"
@@ -46,6 +47,34 @@ func (s *service) MatchHTTP(r *http.Request) (bool, error) {
 	return i != nil, nil
 }
 
+var metaTmpl = template.Must(template.New("meta").Parse(
+	`<meta name="go-import" content="{{.Host}}/{{.Prefix}} {{.Vcs}} {{.Repo}}">
+`))
+
 func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO
+	i, err := s.GetImport(r.URL)
+	if err != nil {
+		// TODO: add logging
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if r.URL.Query().Get("go-get") == "1" {
+		data := map[string]string{
+			"Host":   r.Host,
+			"Prefix": i.Prefix,
+			"Vcs":    i.Vcs,
+			"Repo":   i.Repo,
+		}
+		if err := metaTmpl.Execute(w, data); err != nil {
+			// TODO: add logging
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		target := "https://godoc.org/" + r.Host + r.URL.Path
+		if i.Redirect != "" {
+			target = i.Redirect
+		}
+		http.Redirect(w, r, target, http.StatusFound)
+	}
 }

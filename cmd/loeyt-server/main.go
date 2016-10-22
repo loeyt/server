@@ -11,9 +11,10 @@ import (
 
 var (
 	serverImport = &goget.Import{
-		Prefix: "server",
-		Vcs:    "git",
-		Repo:   "https://github.com/loeyt/server",
+		Prefix:   "server",
+		Vcs:      "git",
+		Repo:     "https://github.com/loeyt/server",
+		Redirect: "https://github.com/loeyt/server",
 	}
 )
 

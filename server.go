@@ -22,6 +22,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, s := range h.Services {
 		match, err := s.MatchHTTP(r)
 		if err != nil {
+			// TODO: add logging
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
