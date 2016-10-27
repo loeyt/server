@@ -10,6 +10,35 @@ type Service interface {
 	http.Handler
 }
 
+// Redirect returns a Service that redirects the set of URL.Path values in
+// match to the specified location using the given HTTP status code.
+func Redirect(location string, code int, match ...string) Service {
+	return &redirect{
+		Location: location,
+		Code:     code,
+		Match:    match,
+	}
+}
+
+type redirect struct {
+	Location string
+	Code     int
+	Match    []string
+}
+
+func (r *redirect) MatchHTTP(req *http.Request) (bool, error) {
+	for _, m := range r.Match {
+		if m == req.URL.Path {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (r *redirect) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	http.Redirect(w, req, r.Location, r.Code)
+}
+
 // Handler is a http.Handler that goes through a list of Service handlers,
 // picking the first one that matches itself against the request.
 type Handler struct {

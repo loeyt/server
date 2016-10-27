@@ -22,6 +22,9 @@ func main() {
 	fmt.Println("starting on :8080")
 	err := http.ListenAndServe(":8080", &server.Handler{
 		Services: []server.Service{
+			server.Redirect("https://luit.eu/", http.StatusFound,
+				"/",
+			),
 			goget.NewService(goget.Static{
 				"server":                  serverImport,
 				"server/cmd":              serverImport,
