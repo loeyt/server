@@ -45,8 +45,8 @@ type Handler struct {
 	Services []Service
 }
 
-// ServeHTTP makes Handler a http.Handler, and iterates through h.Services to
-// find the first Service that can handle the request.
+// ServeHTTP makes Handler a http.Handler, which iterates through h.Services
+// to find the first Service that can handle the request.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, s := range h.Services {
 		match, err := s.MatchHTTP(r)

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"strconv"
 	"strings"
@@ -27,7 +28,7 @@ var (
 		Redirect: "https://github.com/loeyt/server",
 	}
 
-	handler = &server.Handler{
+	dispatcher = &server.Handler{
 		Services: []server.Service{
 			server.Redirect("https://luit.eu/", http.StatusFound,
 				"/",
@@ -39,43 +40,55 @@ var (
 			}),
 		},
 	}
+
+	drone = &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = "http"
+			req.URL.Host = "172.17.0.2:8000"
+			if _, ok := req.Header["User-Agent"]; !ok {
+				// explicitly disable User-Agent so it's not set to default value
+				req.Header.Set("User-Agent", "")
+			}
+			req.Header.Set("X-Forwarded-Proto", "https")
+		},
+	}
 )
 
 func main() {
 	l := listener()
-	err := http.Serve(l, handler)
+	err := http.Serve(l, handler{
+		"loe.yt":       dispatcher,
+		"drone.loe.yt": drone,
+	})
 	if err != nil {
 		log.Fatalln(err)
 	}
 }
 
 func listener() net.Listener {
-	files := filesWithNames()
-	if files == nil {
+	fds := listenFds()
+	if fds == nil {
+		log.Println("listening on :8080")
 		l, err := net.Listen("tcp", ":8080")
 		if err != nil {
 			log.Fatal(err)
 		}
 		return l
 	}
-	var rv net.Listener
-	for name, file := range files {
-		switch name {
-		case "http":
-			serveHTTP(file)
-		case "https":
-			l, err := net.FileListener(file)
-			if err != nil {
-				log.Fatalln("error using fd as net.Listener:", err)
-			}
-			rv = tls.NewListener(l, tlsConfig())
-		default:
-			log.Fatalln("unexpected fd:", name)
-		}
+	if len(fds) < 1 {
+		log.Fatalln("got LISTEN_FDS=0")
 	}
-	return rv
+	if len(fds) > 1 {
+		serveHTTP(fds[1])
+	}
+	l, err := net.FileListener(fds[0])
+	if err != nil {
+		log.Fatalln("error using fd as net.Listener:", err)
+	}
+	return tls.NewListener(l, tlsConfig())
 }
 
+// serveHTTP serves a http to https redirector.
 func serveHTTP(f *os.File) {
 	l, err := net.FileListener(f)
 	if err != nil {
@@ -86,20 +99,17 @@ func serveHTTP(f *os.File) {
 	}))
 }
 
-func filesWithNames() map[string]*os.File {
-	rv := map[string]*os.File{}
-	names := strings.Split(os.Getenv("LISTEN_FDNAMES"), ":")
+func listenFds() []*os.File {
 	nfds, err := strconv.Atoi(os.Getenv("LISTEN_FDS"))
 	if err != nil {
 		return nil
 	}
-	if len(names) != nfds {
-		return nil
+	fds := make([]*os.File, nfds)
+	for n := range fds {
+		name := fmt.Sprintf("LISTEN_FDS_%d", n)
+		fds[n] = os.NewFile(uintptr(n+3), name)
 	}
-	for i, name := range names {
-		rv[name] = os.NewFile(uintptr(i+3), "socket_activation_"+name)
-	}
-	return rv
+	return fds
 }
 
 var manager *autocert.Manager
@@ -130,5 +140,15 @@ func tlsConfig() *tls.Config {
 	}
 	return &tls.Config{
 		GetCertificate: manager.GetCertificate,
+	}
+}
+
+type handler map[string]http.Handler
+
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if hh, ok := h[r.Host]; ok {
+		hh.ServeHTTP(w, r)
+	} else {
+		http.NotFound(w, r)
 	}
 }
