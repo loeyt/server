@@ -27,6 +27,12 @@ var (
 		Repo:     "https://github.com/loeyt/server",
 		Redirect: "https://github.com/loeyt/server",
 	}
+	goVersionImport = &goget.Import{
+		Prefix:   "go-version",
+		Vcs:      "git",
+		Repo:     "https://github.com/loeyt/go-version",
+		Redirect: "https://github.com/loeyt/go-version",
+	}
 
 	dispatcher = &server.Handler{
 		Services: []server.Service{
@@ -37,6 +43,7 @@ var (
 				"server":                  serverImport,
 				"server/cmd":              serverImport,
 				"server/cmd/loeyt-server": serverImport,
+				"go-version":              goVersionImport,
 			}),
 		},
 	}
