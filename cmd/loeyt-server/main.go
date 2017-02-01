@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -11,11 +12,12 @@ import (
 	"strconv"
 	"strings"
 
+	"loe.yt/server"
+	"loe.yt/server/goget"
+
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/context"
-	"loe.yt/server"
-	"loe.yt/server/goget"
 )
 
 const leStagingURL = "https://acme-staging.api.letsencrypt.org/directory"
@@ -48,24 +50,82 @@ var (
 		},
 	}
 
+	tlsListener = false
+
 	drone = &httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			req.URL.Scheme = "http"
-			req.URL.Host = "172.17.0.2:8000"
-			if _, ok := req.Header["User-Agent"]; !ok {
-				// explicitly disable User-Agent so it's not set to default value
-				req.Header.Set("User-Agent", "")
-			}
-			req.Header.Set("X-Forwarded-Proto", "https")
-		},
+		Director: droneDirector,
 	}
+	droneWs = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isWebsocket(r) {
+			droneDirector(r)
+			droneHandleWebsocket(w, r)
+			return
+		}
+		drone.ServeHTTP(w, r)
+	})
 )
+
+func isWebsocket(r *http.Request) bool {
+	if strings.ToLower(r.Header.Get("Connection")) == "upgrade" {
+		return strings.ToLower(r.Header.Get("Upgrade")) == "websocket"
+	}
+	return false
+}
+
+func droneDirector(r *http.Request) {
+	r.URL.Scheme = "http"
+	r.URL.Host = "172.17.0.2:8000"
+	if _, ok := r.Header["User-Agent"]; !ok {
+		// avoid adding a User-Agent, if none exists
+		r.Header.Set("User-Agent", "")
+	}
+	if tlsListener {
+		r.Header.Set("X-Forwarded-Proto", "https")
+	}
+}
+
+func droneHandleWebsocket(w http.ResponseWriter, r *http.Request) {
+	bc, err := net.Dial("tcp", "172.17.0.2:8000")
+	if err != nil {
+		// TODO: add logging
+		http.Error(w, "error contacting backend server", http.StatusBadGateway)
+		return
+	}
+	defer bc.Close()
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		// TODO: add logging
+		http.Error(w, "unable to hijack connection", http.StatusInternalServerError)
+		return
+	}
+	c, _, err := hj.Hijack()
+	if err != nil {
+		// TODO: add logging
+		return
+	}
+	defer c.Close()
+
+	err = r.Write(bc)
+	if err != nil {
+		// TODO: add logging
+		return
+	}
+
+	errc := make(chan error, 2)
+	cp := func(dst io.Writer, src io.Reader) {
+		_, err := io.Copy(dst, src)
+		errc <- err
+	}
+	go cp(bc, c)
+	go cp(c, bc)
+	<-errc
+}
 
 func main() {
 	l := listener()
 	err := http.Serve(l, handler{
 		"loe.yt":       dispatcher,
-		"drone.loe.yt": drone,
+		"drone.loe.yt": droneWs,
 	})
 	if err != nil {
 		log.Fatalln(err)
@@ -92,6 +152,7 @@ func listener() net.Listener {
 	if err != nil {
 		log.Fatalln("error using fd as net.Listener:", err)
 	}
+	tlsListener = true
 	return tls.NewListener(l, tlsConfig())
 }
 
