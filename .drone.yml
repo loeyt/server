@@ -1,8 +1,27 @@
 pipeline:
+
+  setup:
+    image: golang:1.8
+    commands:
+      - make setup CI=1 V=1
+
   build:
     image: golang:1.8
     commands:
-      - make setup CI=1
-      - make all CI=1
-      - make test CI=1
-      - make cover CI=1
+      - make all CI=1 V=1
+
+  test:
+    image: golang:1.8
+    commands:
+      - make test CI=1 V=1
+
+  cover:
+    image: golang:1.8
+    commands:
+      - make cover CI=1 V=1
+
+  release:
+    image: plugins/github-release
+    files: bin/loeyt-server
+    when:
+      event: tag
