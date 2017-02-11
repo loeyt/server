@@ -29,5 +29,6 @@ pipeline:
   release:
     image: plugins/github-release
     files: bin/loeyt-server
+    checksum: [sha256]
     when:
       event: tag
