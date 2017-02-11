@@ -4,6 +4,8 @@ pipeline:
     image: golang:1.8
     commands:
       - make setup CI=1 V=1
+    when:
+      event: [push, pull_request]
 
   build:
     image: golang:1.8
@@ -14,11 +16,15 @@ pipeline:
     image: golang:1.8
     commands:
       - make test CI=1 V=1
+    when:
+      event: [push, pull_request]
 
   cover:
     image: golang:1.8
     commands:
       - make cover CI=1 V=1
+    when:
+      event: [push, pull_request]
 
   release:
     image: plugins/github-release
