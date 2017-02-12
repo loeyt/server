@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"loe.yt/server"
 	"loe.yt/server/goget"
@@ -123,10 +124,16 @@ func droneHandleWebsocket(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	l := listener()
-	err := http.Serve(l, handler{
-		"loe.yt":       dispatcher,
-		"drone.loe.yt": droneWs,
-	})
+	srv := &http.Server{
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+		Handler: handler{
+			"loe.yt":       dispatcher,
+			"drone.loe.yt": droneWs,
+		},
+	}
+	err := srv.Serve(l)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -162,9 +169,15 @@ func serveHTTP(f *os.File) {
 	if err != nil {
 		log.Fatalln("error using fd as net.Listener:", err)
 	}
-	go http.Serve(l, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "https://"+r.Host+r.URL.Path, http.StatusPermanentRedirect)
-	}))
+	srv := &http.Server{
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "https://"+r.Host+r.URL.Path, http.StatusPermanentRedirect)
+		}),
+	}
+	go srv.Serve(l)
 }
 
 func listenFds() []*os.File {
