@@ -1,5 +1,9 @@
 pipeline:
 
+  clone:
+    image: plugins/git
+    tags: true
+
   setup:
     image: golang:1.8
     commands:
