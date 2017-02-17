@@ -11,6 +11,7 @@ all: loeyt-server
 .PHONY: loeyt-server
 loeyt-server: .GOPATH/.ok
 	$Q go install $(if $V,-v) $(VERSION_FLAGS) $(IMPORT_PATH)/cmd/loeyt-server
+	$Q sha256sum bin/loeyt-server
 
 ##### ^^^^^^ EDIT ABOVE ^^^^^^ #####
 
