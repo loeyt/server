@@ -8,8 +8,6 @@ pipeline:
     image: golang:1.8
     commands:
       - make setup CI=1 V=1
-    when:
-      event: [push, pull_request]
 
   build:
     image: golang:1.8
