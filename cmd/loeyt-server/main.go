@@ -265,5 +265,5 @@ func (h versionHandler) MatchHTTP(r *http.Request) (bool, error) {
 }
 
 func (h versionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "version: %s\nbuilt: %s", Version, BuildTime)
+	fmt.Fprintf(w, "%s (built %s)\n", Version, BuildTime)
 }
