@@ -23,6 +23,12 @@ import (
 
 const leStagingURL = "https://acme-staging.api.letsencrypt.org/directory"
 
+// Version is the loeyt-server version, changed by make when built by CI.
+var Version = "dev"
+
+// BuildTime is the loeyt-server build time, changed by make when built by CI.
+var BuildTime = "unknown"
+
 var (
 	serverImport = &goget.Import{
 		Prefix:   "server",
@@ -39,6 +45,7 @@ var (
 
 	dispatcher = &server.Handler{
 		Services: []server.Service{
+			versionHandler{},
 			server.Redirect("https://luit.eu/", http.StatusFound,
 				"/",
 			),
@@ -246,4 +253,17 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		http.NotFound(w, r)
 	}
+}
+
+type versionHandler struct{}
+
+func (h versionHandler) MatchHTTP(r *http.Request) (bool, error) {
+	if r.URL.Path == "/_debug/version" {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (h versionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "version: %s\nbuilt: %s", Version, BuildTime)
 }
