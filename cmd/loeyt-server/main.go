@@ -42,6 +42,12 @@ var (
 		Repo:     "https://github.com/loeyt/go-version",
 		Redirect: "https://github.com/loeyt/go-version",
 	}
+	sctImport = &goget.Import{
+		Prefix:   "sct",
+		Vcs:      "git",
+		Repo:     "https://github.com/loeyt/sct",
+		Redirect: "https://github.com/loeyt/sct",
+	}
 
 	dispatcher = &server.Handler{
 		Services: []server.Service{
@@ -50,6 +56,7 @@ var (
 				"/",
 			),
 			goget.NewService(goget.Static{
+				"sct":                     sctImport,
 				"server":                  serverImport,
 				"server/cmd":              serverImport,
 				"server/cmd/loeyt-server": serverImport,
