@@ -48,11 +48,11 @@ var (
 		Repo:     "https://github.com/loeyt/drone-mailjet",
 		Redirect: "https://github.com/loeyt/drone-mailjet",
 	}
-	ingressImport = &goget.Import{
-		Prefix:   "ingress",
+	pwnedImport = &goget.Import{
+		Prefix:   "pwned",
 		Vcs:      "git",
-		Repo:     "https://github.com/loeyt/ingress",
-		Redirect: "https://github.com/loeyt/ingress",
+		Repo:     "https://github.com/loeyt/pwned",
+		Redirect: "https://github.com/loeyt/pwned",
 	}
 	sctImport = &goget.Import{
 		Prefix:   "sct",
@@ -69,12 +69,12 @@ var (
 			),
 			goget.NewService(goget.Static{
 				"drone-mailjet":           droneMailjetImport,
-				"ingress":                 ingressImport,
+				"go-version":              goVersionImport,
+				"pwned":                   pwnedImport,
 				"sct":                     sctImport,
 				"server":                  serverImport,
 				"server/cmd":              serverImport,
 				"server/cmd/loeyt-server": serverImport,
-				"go-version":              goVersionImport,
 			}),
 		},
 	}
